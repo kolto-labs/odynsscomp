@@ -161,7 +161,7 @@ fn a_tab_escape_is_just_the_letter_t() {
     assert_eq!(
         **left,
         Expr::StrLit {
-            value: "Step:t".to_string(),
+            value: b"Step:t".to_vec(),
             span: left.span(),
         },
         "the backslash is dropped and the t stays"
