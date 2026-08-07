@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --all-targets
+
+      - name: Test
+        run: cargo test --all
+
+      - name: Check lints
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - run: cargo fmt --all --check
+
+  oldest-toolchain:
+    name: Build on the oldest supported Rust
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The crate has no third-party dependencies, so it stays buildable on the
+      # last toolchain that targeted Windows 7. OdyPatcher needs that floor.
+      - uses: dtolnay/rust-toolchain@1.77.2
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test --all
+
+  consumable:
+    name: Usable as a dependency
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: odynsscomp
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: odynsscomp
+
+      # Builds a crate outside the workspace that depends on the library the
+      # way OdyPatcher will, and calls the public API. Catches a private type
+      # leaking into a signature, or a rename that breaks consumers.
+      - name: Build a consumer crate against the library
+        run: |
+          cargo new --bin consumer
+          cd consumer
+          cat >> Cargo.toml <<'EOF'
+          odynsscomp = { path = "../odynsscomp/crates/odynsscomp" }
+          EOF
+          cat > src/main.rs <<'EOF'
+          use odynsscomp::{compile, CompileOptions, Game, NwScript, OptimizationLevel};
+
+          fn main() {
+              let nwscript = NwScript::empty(Game::K2);
+              let options = CompileOptions::new(&nwscript)
+                  .with_include_path("scripts")
+                  .with_optimization(OptimizationLevel::Basic)
+                  .with_source_name("k_test.nss");
+
+              assert_eq!(options.game(), Game::K2);
+
+              match compile("void main() { }", &options) {
+                  Ok(bytes) => println!("compiled {} bytes", bytes.len()),
+                  Err(error) => println!("{error}"),
+              }
+          }
+          EOF
+          cargo run

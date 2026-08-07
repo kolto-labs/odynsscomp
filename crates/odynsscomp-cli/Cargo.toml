@@ -1,0 +1,20 @@
+[package]
+name = "odynsscomp-cli"
+description = "Command line front end for odynsscomp, argv-compatible with nwnnsscomp.exe"
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "odynsscomp"
+path = "src/main.rs"
+
+[dependencies]
+odynsscomp = { version = "1.0.0", path = "../odynsscomp" }

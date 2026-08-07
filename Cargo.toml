@@ -1,0 +1,20 @@
+[workspace]
+members = ["crates/odynsscomp", "crates/odynsscomp-cli"]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.77"
+authors = ["bodencrouch"]
+homepage = "https://swkotor.org"
+repository = "https://github.com/bodencrouch/odynsscomp"
+license = "MIT"
+keywords = ["kotor", "nwscript", "compiler", "modding", "ncs"]
+categories = ["compilers", "game-development"]
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+strip = true
+panic = "unwind"
