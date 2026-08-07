@@ -45,3 +45,38 @@ corpus is absent. Anything else goes in `tests/pipeline.rs` or a `mod tests` in
 the module, and runs everywhere.
 
 Name a test after the behavior it pins, not the function it calls.
+
+## Differential testing against the original
+
+`tests/differential.rs` compiles the same source with `nwnnsscomp.exe` under
+Wine and with this crate, then requires the bytes to be equal. It is the only
+test that can settle a question the specs leave open.
+
+```sh
+export ODYNSSCOMP_REF_DIR=~/Workspaces/odynsscomp_research/harness/ref
+export WINEPREFIX=~/Workspaces/odynsscomp_research/wineprefix
+cargo test --test differential -- --nocapture
+```
+
+`ODYNSSCOMP_REF_DIR` holds one subdirectory per game, each with a copy of
+`nwnnsscomp.exe` and that game's `nwscript.nss`. The original picks its game
+from the `nwscript.nss` beside the executable and nothing else, so those two
+directories are the whole mechanism. Without the variable, or without Wine,
+every test prints why it skipped and passes.
+
+Two things about the original that any driver has to handle:
+
+- **It always exits 0.** Errors, a missing input, a missing `nwscript.nss` -
+  all still return 0. Read stdout, and check that a file starting with `NCS `
+  appeared.
+- **All diagnostics go to stdout.** stderr carries only Wine's noise.
+
+Add a case with the `differential_test!` macro. On a mismatch the failure names
+the first differing instruction with context on both sides, plus a hex window.
+
+The wider harness lives outside this repository at
+`~/Workspaces/odynsscomp_research/harness/`. It answers one-off questions
+(`diffrun.py`), records what the original does (`probe_gaps.py`, which writes
+`spec_gaps_resolved.md`), and scores the whole corpus (`corpus_score.py`, which
+writes `corpus_scoreboard.md`). That scoreboard is how correctness gets
+measured.
