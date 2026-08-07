@@ -1,0 +1,15 @@
+/target
+**/*.rs.bk
+Cargo.lock.orig
+
+# Game data and compiler output are not redistributable and never belong here.
+# Tests reach for them through ODYNSSCOMP_CORPUS instead.
+nwscript.nss
+nwnnsscomp.exe
+*.ncs
+*.bif
+*.key
+*.erf
+*.rim
+*.mod
+/corpus/
