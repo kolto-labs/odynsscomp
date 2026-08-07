@@ -456,8 +456,13 @@ pub enum Expr {
         value: f32,
         span: Span,
     },
+    /// A string literal, in the source file's own bytes.
+    ///
+    /// Not text. `CONSTS` writes a byte count and then those bytes, and the
+    /// game reads them as Windows-1252, so `"café"` is four bytes ending in
+    /// `0xe9`. Decoding to UTF-8 anywhere in between would make it five.
     StrLit {
-        value: String,
+        value: Vec<u8>,
         span: Span,
     },
     /// `OBJECT_SELF` (0) or `OBJECT_INVALID` (1).

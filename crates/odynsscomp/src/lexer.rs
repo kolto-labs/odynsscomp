@@ -164,7 +164,13 @@ pub enum TokenKind {
     /// A float literal, already converted.
     Float(f32),
     /// A string literal with the quotes removed and `\n` already applied.
-    Str(String),
+    ///
+    /// The bytes are the source's own bytes, not UTF-8. `CONSTS` stores a
+    /// length in bytes and the game reads Windows-1252, so `"café"` has to
+    /// reach the byte stream as four bytes ending in `0xe9`. Decoding it to
+    /// text on the way through would make it five, and lose the original
+    /// bytes for anything the decoder could not name.
+    Str(Vec<u8>),
     /// Punctuation or an operator.
     Punct(Punct),
     /// The end of the token stream.
@@ -526,7 +532,10 @@ impl<'a> Lexer<'a> {
         }
 
         let kind = if has_decimal {
-            TokenKind::Float(text.parse::<f32>().unwrap_or(0.0))
+            // `(float) atof (psz)`: convert to double, then round once to
+            // float. Going straight to `f32` rounds twice and can land a ULP
+            // out on a value like `3.67`.
+            TokenKind::Float(text.parse::<f64>().unwrap_or(0.0) as f32)
         } else {
             TokenKind::Int(parse_decimal(text))
         };
@@ -560,15 +569,13 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        let value = String::from_utf8_lossy(&bytes).into_owned();
-        Token::new(TokenKind::Str(value), self.span_from(start))
+        Token::new(TokenKind::Str(source_bytes(&bytes)), self.span_from(start))
     }
 
     fn unterminated_string(&mut self, start: Position, bytes: Vec<u8>) -> Token {
         let span = self.span_from(start);
         self.error(span, "Unterminated string");
-        let value = String::from_utf8_lossy(&bytes).into_owned();
-        Token::new(TokenKind::Str(value), span)
+        Token::new(TokenKind::Str(source_bytes(&bytes)), span)
     }
 
     /// Scans one operator, or consumes a comment and returns `None`.
@@ -769,6 +776,19 @@ fn is_utf8_continuation(byte: u8) -> bool {
     (0x80..0xc0).contains(&byte)
 }
 
+/// Turns the UTF-8 the scanner walked back into the source file's own bytes.
+///
+/// The scanner reads a `&str` that [`crate::preprocessor::decode_source`]
+/// produced, so a file byte of `0xe9` sits in it as the two UTF-8 bytes of
+/// U+00E9. A string literal has to reach `CONSTS` as the `0xe9`, because the
+/// length field counts bytes and the game reads Windows-1252.
+fn source_bytes(utf8: &[u8]) -> Vec<u8> {
+    // The slice is always a whole run of characters: none of `"`, `\`, `\n`
+    // or `\r` can appear inside a UTF-8 sequence, so the scanner never cuts
+    // one in half. `from_utf8_lossy` therefore never replaces anything.
+    crate::preprocessor::encode_source(&String::from_utf8_lossy(utf8))
+}
+
 fn hex_digit(byte: u8) -> Option<u8> {
     match byte {
         b'0'..=b'9' => Some(byte - b'0'),
@@ -937,9 +957,9 @@ mod tests {
 
     #[test]
     fn newline_is_the_only_string_escape() {
-        assert_eq!(kinds(r#""a\nb""#), vec![TokenKind::Str("a\nb".to_string())]);
+        assert_eq!(kinds(r#""a\nb""#), vec![TokenKind::Str(b"a\nb".to_vec())]);
         // `\t` loses its backslash and keeps the letter.
-        assert_eq!(kinds(r#""a\tb""#), vec![TokenKind::Str("atb".to_string())]);
+        assert_eq!(kinds(r#""a\tb""#), vec![TokenKind::Str(b"atb".to_vec())]);
     }
 
     #[test]
@@ -947,7 +967,7 @@ mod tests {
         // This is the quirk mod source depends on. `"a\"` is the string `a`,
         // and `b` is an identifier that follows it.
         let tokens = kinds(r#""a\" b"#);
-        assert_eq!(tokens[0], TokenKind::Str("a".to_string()));
+        assert_eq!(tokens[0], TokenKind::Str(b"a".to_vec()));
         assert_eq!(tokens[1], TokenKind::Identifier("b".to_string()));
     }
 
@@ -956,7 +976,7 @@ mod tests {
         let lexed = Lexer::new("\"oops\nvoid main() {}").scan();
         assert!(lexed.has_errors());
         assert_eq!(lexed.diagnostics[0].message, "Unterminated string");
-        assert_eq!(lexed.tokens[0].kind, TokenKind::Str("oops".to_string()));
+        assert_eq!(lexed.tokens[0].kind, TokenKind::Str(b"oops".to_vec()));
     }
 
     #[test]
@@ -1035,7 +1055,7 @@ mod tests {
         // Inside a string they survive.
         assert_eq!(
             kinds("\"caf\u{00e9}\""),
-            vec![TokenKind::Str("caf\u{00e9}".to_string())]
+            vec![TokenKind::Str(vec![b'c', b'a', b'f', 0xe9])]
         );
     }
 
@@ -1056,7 +1076,7 @@ mod tests {
         assert_eq!(TokenKind::Identifier("foo".to_string()).describe(), "foo");
         assert_eq!(TokenKind::Int(1).describe(), "integer constant");
         assert_eq!(TokenKind::Float(1.0).describe(), "float constant");
-        assert_eq!(TokenKind::Str(String::new()).describe(), "string constant");
+        assert_eq!(TokenKind::Str(Vec::new()).describe(), "string constant");
         assert_eq!(TokenKind::Keyword(Keyword::Int).describe(), "int");
         assert_eq!(TokenKind::Punct(Punct::Semicolon).describe(), ";");
     }
