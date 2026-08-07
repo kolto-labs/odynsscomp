@@ -97,6 +97,19 @@ impl EngineStructures {
         true
     }
 
+    /// Adds every name from `other` that this table does not already declare.
+    ///
+    /// A script inherits its engine structure names from `nwscript.nss`, which
+    /// it never includes. This is how they get in: the names the script's own
+    /// `#define` lines gave win, and the rest come from the routine table.
+    pub fn merge_defaults(&mut self, other: &EngineStructures) {
+        for (index, name) in other.iter() {
+            if self.name(index).is_none() {
+                self.define(index, name);
+            }
+        }
+    }
+
     /// Returns the index declared for `name`, if any. Names are case sensitive.
     pub fn lookup(&self, name: &str) -> Option<u8> {
         self.names
