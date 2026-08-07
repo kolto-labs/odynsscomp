@@ -87,20 +87,31 @@ pinned to a tag:
 
 ```toml
 [dependencies]
-odynsscomp = { git = "ssh://git@github.com/bodencrouch/odynsscomp.git", tag = "v1.0.0" }
-```
-
-That needs an SSH key on the account with access. Over HTTPS instead, with a
-credential helper or a token in the environment:
-
-```toml
-[dependencies]
 odynsscomp = { git = "https://github.com/bodencrouch/odynsscomp.git", tag = "v1.0.0" }
 ```
 
+Cargo has to authenticate to reach a private repository. Over HTTPS that means
+a git credential helper:
+
 ```sh
-gh auth setup-git          # once, to teach git the credential helper
+gh auth setup-git          # once, on an account with access to the repo
 cargo build
+```
+
+Over SSH instead, if the account has a key loaded:
+
+```toml
+[dependencies]
+odynsscomp = { git = "ssh://git@github.com/bodencrouch/odynsscomp.git", tag = "v1.0.0" }
+```
+
+If Cargo's built-in SSH client cannot authenticate but `git clone` can, hand the
+fetch to the git binary:
+
+```toml
+# .cargo/config.toml
+[net]
+git-fetch-with-cli = true
 ```
 
 For local development against both trees at once, point at the path and skip
