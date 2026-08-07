@@ -124,6 +124,32 @@ fn compiling_from_memory_needs_no_files_at_all() {
     assert_eq!(bytes.len(), HEADER_LEN + 10);
 }
 
+/// `object a, b;` declares two names in the scope it was written in.
+///
+/// One declaration statement per declarator is right, but they cannot be
+/// wrapped in a block on the way: a block ends by popping its locals, so the
+/// second name would go out of scope on the next line and every use of it
+/// would be an error. This is a whole third of the K1 corpus.
+#[test]
+fn a_declarator_list_leaves_every_name_in_the_surrounding_scope() {
+    let nwscript = NwScript::empty(Game::K1);
+    let options = CompileOptions::new(&nwscript);
+    let bytes = compile("void main() { object oOne, oTwo; oTwo = oOne; }", &options)
+        .expect("both names are in scope");
+
+    // Two reservations, then a read and a write. No MOVSP in between.
+    let expected = [
+        0x02, 0x06, // RSADDO
+        0x02, 0x06, // RSADDO
+        0x03, 0x01, 0xff, 0xff, 0xff, 0xf8, 0x00, 0x04, // CPTOPSP -8, 4
+        0x01, 0x01, 0xff, 0xff, 0xff, 0xf8, 0x00, 0x04, // CPDOWNSP -8, 4
+    ];
+    assert!(
+        bytes.windows(expected.len()).any(|w| w == expected),
+        "expected two reservations and a copy, got {bytes:02x?}"
+    );
+}
+
 #[test]
 fn an_empty_compiled_script_round_trips_through_the_container() {
     let bytes = NcsWriter::new().finish();

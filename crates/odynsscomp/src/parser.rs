@@ -451,17 +451,16 @@ impl Parser {
         let name = self.identifier()?;
         let mut declarations = self.init_declarator_list(ty, name, is_const, start)?;
 
-        // A declarator list is several declarations. The extras go into a block
-        // so one statement still comes back, and the block carries no scope of
-        // its own beyond what the declarations already have.
+        // A declarator list is several declarations, and they belong to the
+        // scope around them. Wrapping them in a block would give them one of
+        // their own, and the names would go out of scope on the next line.
         if declarations.len() == 1 {
             return Ok(Stmt::VarDecl(declarations.remove(0)));
         }
-        let span = start.join(self.previous_span());
-        Ok(Stmt::Block(Block {
-            statements: declarations.into_iter().map(Stmt::VarDecl).collect(),
-            span,
-        }))
+        Ok(Stmt::VarDecls {
+            declarations,
+            span: start.join(self.previous_span()),
+        })
     }
 
     fn expression_statement(&mut self, start: Span) -> Parse<Stmt> {

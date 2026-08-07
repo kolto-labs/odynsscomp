@@ -28,7 +28,7 @@
 
 use crate::ast::{
     simplify_constant, AssignOp, BinaryOp, Block, EngineType, EntryPoint, Expr, Parameter,
-    PostfixOp, Stmt, Type, UnaryOp,
+    PostfixOp, Stmt, Type, UnaryOp, VarDecl,
 };
 use crate::error::{CompileError, Diagnostic, Span, Stage};
 use crate::ncs::{op, qualifier, NcsWriter};
@@ -332,36 +332,45 @@ impl<'a> Emitter<'a> {
         Ok(())
     }
 
+    /// Declares one local, or binds one `const` with no code at all.
+    fn var_decl(&mut self, declaration: &VarDecl) -> Result<(), CompileError> {
+        if declaration.is_const {
+            let Some(value) = declaration.init.as_ref() else {
+                return Err(error(
+                    declaration.span,
+                    format!(
+                        "Required value for constant \"{}\" missing.",
+                        declaration.name
+                    ),
+                ));
+            };
+            self.declare_local(
+                &declaration.name,
+                &declaration.ty,
+                Binding::Constant(simplify_constant(value)),
+            );
+            return Ok(());
+        }
+        let slot = self.frame_depth;
+        self.declare_local(&declaration.name, &declaration.ty, Binding::Slot(slot));
+        self.declare(
+            &declaration.ty,
+            Depth::Frame,
+            declaration.init.as_ref(),
+            declaration.span,
+        )
+    }
+
     fn statement(&mut self, statement: &Stmt) -> Result<(), CompileError> {
         match statement {
             Stmt::Empty(_) => Ok(()),
             Stmt::Block(block) => self.block(block),
-            Stmt::VarDecl(declaration) => {
-                if declaration.is_const {
-                    let Some(value) = declaration.init.clone() else {
-                        return Err(error(
-                            declaration.span,
-                            format!(
-                                "Required value for constant \"{}\" missing.",
-                                declaration.name
-                            ),
-                        ));
-                    };
-                    self.declare_local(
-                        &declaration.name,
-                        &declaration.ty,
-                        Binding::Constant(simplify_constant(&value)),
-                    );
-                    return Ok(());
+            Stmt::VarDecl(declaration) => self.var_decl(declaration),
+            Stmt::VarDecls { declarations, .. } => {
+                for declaration in declarations {
+                    self.var_decl(declaration)?;
                 }
-                let slot = self.frame_depth;
-                self.declare_local(&declaration.name, &declaration.ty, Binding::Slot(slot));
-                self.declare(
-                    &declaration.ty,
-                    Depth::Frame,
-                    declaration.init.as_ref(),
-                    declaration.span,
-                )
+                Ok(())
             }
             Stmt::Expr { expr, .. } => {
                 let ty = self.expression(expr)?;
