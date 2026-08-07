@@ -138,11 +138,12 @@ impl NwScript {
     /// diagnostics when its contents are rejected.
     pub fn load(game: Game, path: impl AsRef<Path>) -> Result<NwScript, CompileError> {
         let path = path.as_ref();
-        let source = std::fs::read_to_string(path).map_err(|error| CompileError::Io {
+        let bytes = std::fs::read(path).map_err(|error| CompileError::Io {
             path: path.display().to_string(),
             message: error.to_string(),
         })?;
-        NwScript::from_source(game, source)
+        // Game files are Windows-1252 bytes, not UTF-8.
+        NwScript::from_source(game, crate::preprocessor::decode_source(&bytes))
     }
 
     /// Parses `nwscript.nss` contents already held in memory.

@@ -193,9 +193,23 @@ crates/odynsscomp/       the library
   src/ncs.rs             the compiled script container
   src/nwscript.rs        per-game routine tables
   tests/pipeline.rs      end to end checks on committed fixtures
+  tests/frontend.rs      preprocessor, lexer and parser on the fixtures
+  tests/frontend_corpus.rs  parses every script the corpus lists
   tests/golden.rs        byte comparison against the corpus
+  tests/fixtures/spec_gaps/  one file per open question, for the Wine oracle
 crates/odynsscomp-cli/   the binary
 ```
+
+## Credit
+
+The compiler this one replaces is Torlack's NWScript compiler, written by
+Edward T. Smith and later contributed to the Open Knights Consortium under the
+BSD 3-Clause license, then ported to KOTOR by Hazard and by tk102 for stoffe.
+
+odynsscomp is an independent Rust reimplementation. It copies no code. It does
+copy behaviour on purpose, down to the diagnostic strings, because mod source
+and mod tooling were written against that behaviour. See [NOTICE](NOTICE) for
+the full attribution.
 
 ## License
 

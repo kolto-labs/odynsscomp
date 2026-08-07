@@ -176,14 +176,30 @@ pub fn compile_detailed(
     let resolver = options.include_resolver();
 
     let expansion = preprocessor::expand(source, &origin, &resolver)?;
-    let tokens = lexer::tokenize(&expansion.source)?;
-    let script = parser::parse(tokens)?;
-    let analyzed = sema::analyze(script, options.nwscript())?;
+    let mut warnings = expansion.warnings.clone();
+
+    let lexed = lexer::scan(&expansion.source, &expansion.engine_structures);
+    if lexed.has_errors() {
+        return Err(CompileError::Diagnostics(
+            expansion.localize_all(lexed.diagnostics),
+        ));
+    }
+    warnings.extend(expansion.localize_all(lexed.diagnostics));
+
+    let parsed = parser::parse_detailed(lexed.tokens);
+    if parsed.has_errors() {
+        return Err(CompileError::Diagnostics(
+            expansion.localize_all(parsed.diagnostics),
+        ));
+    }
+    warnings.extend(expansion.localize_all(parsed.diagnostics));
+
+    let analyzed = sema::analyze(parsed.script, options.nwscript())?;
     let ncs = codegen::generate(&analyzed, options.optimization())?;
 
     Ok(Compilation {
         ncs,
-        warnings: Vec::new(),
+        warnings,
         included_files: expansion.included_files,
     })
 }
@@ -202,10 +218,11 @@ pub fn compile_file(
     options: &CompileOptions<'_>,
 ) -> Result<Vec<u8>, CompileError> {
     let path = path.as_ref();
-    let source = std::fs::read_to_string(path).map_err(|error| CompileError::Io {
+    let bytes = std::fs::read(path).map_err(|error| CompileError::Io {
         path: path.display().to_string(),
         message: error.to_string(),
     })?;
+    let source = preprocessor::decode_source(&bytes);
 
     let mut options = options.clone();
     if let Some(directory) = path.parent() {

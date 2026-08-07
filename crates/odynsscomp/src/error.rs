@@ -2,8 +2,8 @@
 //!
 //! Every stage of the pipeline reports problems through [`Diagnostic`]. A
 //! diagnostic always carries a [`Span`] so callers can point at the offending
-//! text, and `nwnnsscomp.exe`-style one-line messages come out of the [`Display`]
-//! implementations.
+//! text, and `nwnnsscomp.exe`-style one-line messages come out of the
+//! [`std::fmt::Display`] implementations.
 //!
 //! This module is fully implemented. The compiler stages are not; see the
 //! module docs in [`crate::lexer`] and friends.
@@ -336,6 +336,11 @@ impl DiagnosticSink {
     /// Returns every diagnostic recorded so far.
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
+    }
+
+    /// Returns every diagnostic recorded so far, consuming the sink.
+    pub fn into_diagnostics(self) -> Vec<Diagnostic> {
+        self.diagnostics
     }
 
     /// Returns how many errors were recorded.
