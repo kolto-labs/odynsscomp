@@ -218,6 +218,11 @@ impl Diagnostic {
         self.file = file.into();
         self
     }
+
+    /// Returns true when this diagnostic stops the compile.
+    pub fn is_error(&self) -> bool {
+        self.severity == Severity::Error
+    }
 }
 
 impl fmt::Display for Diagnostic {

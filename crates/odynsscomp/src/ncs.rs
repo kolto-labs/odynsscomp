@@ -29,6 +29,145 @@ pub const OP_SIZE: u8 = 0x42;
 /// Bytes taken by the magic, version, size marker, and size field together.
 pub const HEADER_LEN: usize = 13;
 
+/// The instruction set, as opcode bytes.
+///
+/// An instruction is one opcode byte, one qualifier byte, then operands. The
+/// qualifier says what the operand types are, so `+` is `14 20` over two ints
+/// and `14 23` over two strings. [`qualifier`] holds those.
+///
+/// The names are the ones the reference compiler's enum uses. Two of them
+/// mislead: `BOOLAND` is bitwise `&`, and `LOGAND` is `&&`.
+pub mod op {
+    /// Copy from the top of the stack down to an address. `01 01`.
+    pub const CPDOWNSP: u8 = 0x01;
+    /// Reserve a zeroed slot for a declaration. `02 <type>`.
+    pub const RSADD: u8 = 0x02;
+    /// Copy from an address to the top of the stack. `03 01`.
+    pub const CPTOPSP: u8 = 0x03;
+    /// Push a literal. `04 <type>`.
+    pub const CONST: u8 = 0x04;
+    /// Call an engine routine. `05 00 <u16 id> <u8 argc>`.
+    pub const ACTION: u8 = 0x05;
+    /// `&&`, the join once both operands are on the stack.
+    pub const LOGAND: u8 = 0x06;
+    /// `||`, the join once both operands are on the stack.
+    pub const LOGOR: u8 = 0x07;
+    /// `|`, bitwise or.
+    pub const INCOR: u8 = 0x08;
+    /// `^`, bitwise exclusive or.
+    pub const EXCOR: u8 = 0x09;
+    /// `&`, bitwise and. Named after the wrong operator in the original.
+    pub const BOOLAND: u8 = 0x0a;
+    /// `==`.
+    pub const EQUAL: u8 = 0x0b;
+    /// `!=`.
+    pub const NEQUAL: u8 = 0x0c;
+    /// `>=`.
+    pub const GEQ: u8 = 0x0d;
+    /// `>`.
+    pub const GT: u8 = 0x0e;
+    /// `<`.
+    pub const LT: u8 = 0x0f;
+    /// `<=`.
+    pub const LEQ: u8 = 0x10;
+    /// `<<`.
+    pub const SHLEFT: u8 = 0x11;
+    /// `>>`.
+    pub const SHRIGHT: u8 = 0x12;
+    /// `>>>`, unsigned right shift.
+    pub const USHRIGHT: u8 = 0x13;
+    /// `+`, including string concatenation.
+    pub const ADD: u8 = 0x14;
+    /// `-`.
+    pub const SUB: u8 = 0x15;
+    /// `*`.
+    pub const MUL: u8 = 0x16;
+    /// `/`.
+    pub const DIV: u8 = 0x17;
+    /// `%`.
+    pub const MOD: u8 = 0x18;
+    /// Unary `-`.
+    pub const NEG: u8 = 0x19;
+    /// Unary `~`.
+    pub const COMP: u8 = 0x1a;
+    /// Move the stack pointer. `1B 00 <i32 delta>`, always negative.
+    pub const MOVSP: u8 = 0x1b;
+    /// Unconditional jump. `1D 00 <i32 relative>`.
+    pub const JMP: u8 = 0x1d;
+    /// Call a script function. `1E 00 <i32 relative>`.
+    pub const JSR: u8 = 0x1e;
+    /// Pop, and jump if it was zero. `1F 00 <i32 relative>`.
+    pub const JZ: u8 = 0x1f;
+    /// Return from a routine. `20 00`.
+    pub const RETN: u8 = 0x20;
+    /// Keep one slice of the top of the stack and drop the rest. `21 01`.
+    pub const DESTRUCT: u8 = 0x21;
+    /// Unary `!`.
+    pub const NOT: u8 = 0x22;
+    /// Decrement an `int` local in place. `23 03 <i32 address>`.
+    pub const DECISP: u8 = 0x23;
+    /// Increment an `int` local in place. `24 03 <i32 address>`.
+    pub const INCISP: u8 = 0x24;
+    /// Pop, and jump if it was not zero. `25 00 <i32 relative>`.
+    pub const JNZ: u8 = 0x25;
+    /// Copy from the top of the stack down to a global. `26 01`.
+    pub const CPDOWNBP: u8 = 0x26;
+    /// Copy a global to the top of the stack. `27 01`.
+    pub const CPTOPBP: u8 = 0x27;
+    /// Decrement an `int` global in place. `28 03 <i32 address>`.
+    pub const DECIBP: u8 = 0x28;
+    /// Increment an `int` global in place. `29 03 <i32 address>`.
+    pub const INCIBP: u8 = 0x29;
+    /// Point the base pointer at the globals. `2A 00`.
+    pub const SAVEBP: u8 = 0x2a;
+    /// Put the base pointer back. `2B 00`.
+    pub const RESTOREBP: u8 = 0x2b;
+    /// Snapshot the stack for a delayed call. `2C 10 <u32 globals> <u32 frame>`.
+    pub const STORE_STATE: u8 = 0x2c;
+}
+
+/// Operand type qualifiers: the second byte of an instruction.
+pub mod qualifier {
+    /// No operands, or operands whose types cannot vary.
+    pub const NONE: u8 = 0x00;
+    /// A copy or a destructure, whose operands are sizes rather than types.
+    pub const STRUCTURAL: u8 = 0x01;
+    /// `int`.
+    pub const INT: u8 = 0x03;
+    /// `float`.
+    pub const FLOAT: u8 = 0x04;
+    /// `string`.
+    pub const STR: u8 = 0x05;
+    /// `object`.
+    pub const OBJECT: u8 = 0x06;
+    /// The first engine structure type. Structure `n` is `ENGINE + n`.
+    pub const ENGINE: u8 = 0x10;
+    /// `int` on both sides.
+    pub const INT_INT: u8 = 0x20;
+    /// `float` on both sides.
+    pub const FLOAT_FLOAT: u8 = 0x21;
+    /// `object` on both sides.
+    pub const OBJECT_OBJECT: u8 = 0x22;
+    /// `string` on both sides.
+    pub const STR_STR: u8 = 0x23;
+    /// Two aggregates of one size, which follows as a `u16` byte count.
+    pub const AGGREGATE: u8 = 0x24;
+    /// `int` then `float`.
+    pub const INT_FLOAT: u8 = 0x25;
+    /// `float` then `int`.
+    pub const FLOAT_INT: u8 = 0x26;
+    /// Engine structure `n` on both sides is `ENGINE_PAIR + n`.
+    pub const ENGINE_PAIR: u8 = 0x30;
+    /// `vector` on both sides.
+    pub const VECTOR_VECTOR: u8 = 0x3a;
+    /// `vector` then `float`.
+    pub const VECTOR_FLOAT: u8 = 0x3b;
+    /// `float` then `vector`.
+    pub const FLOAT_VECTOR: u8 = 0x3c;
+    /// The offset a `STORE_STATE` snapshot resumes at.
+    pub const STORED_STATE: u8 = 0x10;
+}
+
 /// A growable big-endian byte sink for the instruction stream.
 ///
 /// Every multi-byte value in a compiled script is big-endian, so this is the
@@ -61,6 +200,14 @@ impl NcsWriter {
 
     /// Writes a big-endian `u16`.
     pub fn write_u16(&mut self, value: u16) {
+        self.bytes.extend_from_slice(&value.to_be_bytes());
+    }
+
+    /// Writes a big-endian `i16`.
+    ///
+    /// `DESTRUCT`'s middle operand is the only signed 16-bit field in the
+    /// format.
+    pub fn write_i16(&mut self, value: i16) {
         self.bytes.extend_from_slice(&value.to_be_bytes());
     }
 

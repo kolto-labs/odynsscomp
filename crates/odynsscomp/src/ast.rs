@@ -566,6 +566,38 @@ impl Expr {
     }
 }
 
+/// Folds a leading minus into the literal it negates.
+///
+/// This is the one and only fold the reference compiler performs, and unlike
+/// every other one it is not gated on optimization being enabled. It applies in
+/// exactly three places — a `const` declaration's value, a default argument,
+/// and a `case` label — and only to a minus applied directly to a numeric
+/// literal. `-1` becomes the literal `-1`; `-(1)` and `-x` are left alone, and
+/// so is a `-1` anywhere else, which really does emit a push and a negate.
+///
+/// Skipping it costs two bytes per negative default argument, and
+/// `ActionStartConversation` alone has two of them.
+pub fn simplify_constant(expr: &Expr) -> Expr {
+    match expr {
+        Expr::Unary {
+            op: UnaryOp::Negate,
+            operand,
+            span,
+        } => match operand.as_ref() {
+            Expr::IntLit { value, .. } => Expr::IntLit {
+                value: value.wrapping_neg(),
+                span: *span,
+            },
+            Expr::FloatLit { value, .. } => Expr::FloatLit {
+                value: -*value,
+                span: *span,
+            },
+            _ => expr.clone(),
+        },
+        _ => expr.clone(),
+    }
+}
+
 /// A prefix operator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(missing_docs)]

@@ -6,11 +6,14 @@
 //! links it and compiles in process, with no subprocess, no temporary files,
 //! and no wine.
 //!
-//! # Status
+//! # Byte equality is the acceptance test
 //!
-//! Scaffold. The public API, the diagnostics, and the compiled script container
-//! are real. The compiler stages return
-//! [`CompileError::NotImplemented`] until they land. Nothing panics.
+//! The output has to be the same bytes `nwnnsscomp.exe` produces, not merely
+//! code that runs the same. So this compiler does no optimization at all: the
+//! reference gates every optimization it has on a flag the KOTOR fork left
+//! permanently off, and matching it means matching that too. See
+//! [`codegen`] for the three behaviors that look like bugs and are load
+//! bearing.
 //!
 //! # Compiling from memory
 //!
@@ -175,8 +178,15 @@ pub fn compile_detailed(
     let origin = PathBuf::from(options.source_name());
     let resolver = options.include_resolver();
 
-    let expansion = preprocessor::expand(source, &origin, &resolver)?;
+    let mut expansion = preprocessor::expand(source, &origin, &resolver)?;
     let mut warnings = expansion.warnings.clone();
+
+    // A script never includes `nwscript.nss`, so the engine structure names it
+    // declares have to be handed over here. Without them `effect` is an
+    // ordinary identifier and every declaration that uses one fails to parse.
+    expansion
+        .engine_structures
+        .merge_defaults(options.nwscript().engine_structures());
 
     let lexed = lexer::scan(&expansion.source, &expansion.engine_structures);
     if lexed.has_errors() {
@@ -278,10 +288,19 @@ mod tests {
     }
 
     #[test]
-    fn compiling_reports_the_first_unwritten_stage_instead_of_panicking() {
+    fn an_empty_main_compiles_to_the_smallest_script_there_is() {
         let nwscript = NwScript::empty(Game::K1);
         let options = CompileOptions::new(&nwscript);
-        let error = compile("void main() { }", &options).expect_err("the pipeline is a stub");
-        assert!(error.is_not_implemented());
+        let bytes = compile("void main() { }", &options).expect("an empty main compiles");
+        assert_eq!(bytes.len(), 23);
+        assert_eq!(&bytes[0..8], b"NCS V1.0");
+    }
+
+    #[test]
+    fn a_file_with_no_entry_point_is_refused_as_an_include() {
+        let nwscript = NwScript::empty(Game::K1);
+        let options = CompileOptions::new(&nwscript);
+        let error = compile("void Helper() { }", &options).expect_err("there is no entry point");
+        assert!(error.to_string().contains("include file"));
     }
 }
