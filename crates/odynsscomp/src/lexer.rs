@@ -798,12 +798,21 @@ fn hex_digit(byte: u8) -> Option<u8> {
     }
 }
 
-/// Converts a decimal literal the way `atol` does, saturating on overflow.
+/// Converts a decimal literal, wrapping on overflow rather than saturating.
+///
+/// Not what `atol` does. The reference compiler accumulates digit by digit and
+/// lets the result wrap, so `2147483648` is `-2147483648`, `4294967296` is `0`,
+/// and `99999999999` is `1215752191`. Saturating to `i32::MAX` instead would
+/// compile all three to the same wrong number, silently. Measured against the
+/// real compiler; the hex path already worked this way.
 fn parse_decimal(text: &str) -> i32 {
-    match text.parse::<i64>() {
-        Ok(value) => value.clamp(i32::MIN as i64, i32::MAX as i64) as i32,
-        Err(_) => i32::MAX,
+    let mut value: i32 = 0;
+    for byte in text.bytes() {
+        if byte.is_ascii_digit() {
+            value = value.wrapping_mul(10).wrapping_add((byte - b'0') as i32);
+        }
     }
+    value
 }
 
 /// Scans `source`, keeping warnings as well as errors.
@@ -1081,11 +1090,14 @@ mod tests {
         assert_eq!(TokenKind::Punct(Punct::Semicolon).describe(), ";");
     }
 
+    /// Every value here came out of the real compiler, not out of a spec.
     #[test]
-    fn decimal_overflow_saturates_the_way_atol_does() {
-        assert_eq!(parse_decimal("2147483648"), i32::MAX);
-        assert_eq!(parse_decimal("2147483647"), i32::MAX);
+    fn a_decimal_literal_wraps_on_overflow_rather_than_saturating() {
         assert_eq!(parse_decimal("7"), 7);
+        assert_eq!(parse_decimal("2147483647"), i32::MAX);
+        assert_eq!(parse_decimal("2147483648"), i32::MIN);
+        assert_eq!(parse_decimal("4294967296"), 0);
+        assert_eq!(parse_decimal("99999999999"), 1_215_752_191);
     }
 
     #[test]
