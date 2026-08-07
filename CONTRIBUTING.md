@@ -30,19 +30,35 @@ byte is a failure.
 
 ## Working on a stage
 
-Each module in `crates/odynsscomp/src/` has a `# Status` section listing what an
-implementation owes the next stage. Read it first. Replace the
-`CompileError::NotImplemented` return with real work, delete the `TODO`, and
-drop the matching skip arm in `tests/golden.rs` once the stage is real.
+Each module in `crates/odynsscomp/src/` opens with what it owes the next one,
+and `codegen.rs` lists the three behaviors that look like bugs and are load
+bearing. Read those before changing anything there.
+
+Do not add an optimization. Not constant folding, not dead branch removal, not
+jump shortening. The original has all of them and runs none of them, and every
+one changes the bytes.
 
 Keep errors flowing through `DiagnosticSink` so one run reports many problems.
 Do not stop at the first error.
 
 ## Tests
 
-Anything that needs game files goes in `tests/golden.rs` and skips when the
-corpus is absent. Anything else goes in `tests/pipeline.rs` or a `mod tests` in
-the module, and runs everywhere.
+Anything that needs game files skips when the corpus is absent, so a clean
+checkout and CI stay green. Anything else goes in `tests/pipeline.rs` or a
+`mod tests` in the module, and runs everywhere.
+
+`tests/golden.rs` compiles the whole corpus and compares against the shipped
+`.ncs`. It is ignored by default: it is minutes of IO, and roughly one shipped
+file in fifteen was built from a different revision of the `.nss` beside it, so
+even a perfect compiler misses those.
+
+```sh
+cargo test --test golden -- --ignored --nocapture
+ODYNSSCOMP_CORPUS_LIMIT=200 cargo test --test golden -- --ignored
+```
+
+`tests/differential.rs` is the bar without that slack: it asks the original
+compiler directly.
 
 Name a test after the behavior it pins, not the function it calls.
 

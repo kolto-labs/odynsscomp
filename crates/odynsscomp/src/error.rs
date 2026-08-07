@@ -260,10 +260,11 @@ pub enum CompileError {
         /// The operating system's explanation.
         message: String,
     },
-    /// The requested feature exists in the design but not yet in the code.
+    /// The requested feature exists in the design but not in the code.
     ///
-    /// The scaffold returns this from every entry point. It disappears as the
-    /// stages land.
+    /// No stage of the compiler returns this any more. It stays because it is
+    /// part of the 1.0 API, and because a caller asking for something like
+    /// decompiling deserves this rather than a diagnostic about their source.
     NotImplemented(&'static str),
 }
 

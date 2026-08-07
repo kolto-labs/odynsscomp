@@ -10,18 +10,30 @@ links it and compiles in process: no subprocess, no temporary files, no wine.
 
 ## Status
 
-Scaffold. Version 1.0.0 fixes the public API, the diagnostics, and the compiled
-script container. The compiler stages return `CompileError::NotImplemented`
-until they land. Nothing panics and nothing writes to disk unless you ask it to.
+It compiles. Every one of the 2340 shipped script pairs that `nwnnsscomp.exe`
+itself builds, this compiler builds to identical bytes, across both games and
+all four difficulty tiers. The 30 it declines to build, this one declines too.
+
+Byte equality is the acceptance test, not merely running the same. That is why
+this compiler does no optimization at all: the original gates every
+optimization it has behind a flag the KOTOR fork left permanently off, so
+matching its output means matching that too. `2 + 3` really does emit two
+pushes and an add.
 
 | Part | State |
 | --- | --- |
-| Public API, `CompileOptions`, `Game` | done |
-| Diagnostics with line and column | done |
-| `.ncs` header and byte writer | done |
-| Command line argument handling | done |
-| Preprocessor, lexer, parser, sema, codegen | stubs |
-| `nwscript.nss` routine table parsing | stub |
+| Preprocessor, lexer, parser | done |
+| Name resolution, layout, reachability | done |
+| Code generation and `.ncs` emission | done |
+| `nwscript.nss` routine table parsing | done |
+| Command line, argv-compatible with the original | done |
+| Decompiling | not supported, and not planned |
+
+Two things the original rejects and this compiler accepts: a definition whose
+parameter list disagrees with an earlier prototype, and an argument whose type
+does not match the parameter for a handful of engine routines. Seven corpus
+scripts are in that gap. Nothing in it changes the bytes of a script that
+compiles both ways.
 
 ## Use it as a library
 
