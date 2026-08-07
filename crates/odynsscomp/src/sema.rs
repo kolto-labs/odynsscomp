@@ -508,6 +508,11 @@ fn gather_stmt(
                 walk(init);
             }
         }
+        Stmt::VarDecls { declarations, .. } => {
+            for init in declarations.iter().filter_map(|d| d.init.as_ref()) {
+                walk(init);
+            }
+        }
         Stmt::Expr { expr, .. } => walk(expr),
         Stmt::If {
             condition,

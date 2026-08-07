@@ -204,14 +204,26 @@ pub fn compile_detailed(
     }
     warnings.extend(expansion.localize_all(parsed.diagnostics));
 
-    let analyzed = sema::analyze(parsed.script, options.nwscript())?;
-    let ncs = codegen::generate(&analyzed, options.optimization())?;
+    // The back end works on the expanded buffer too, so its diagnostics need
+    // the same rewrite to name the file and line the code really came from.
+    let analyzed = sema::analyze(parsed.script, options.nwscript())
+        .map_err(|error| localize(error, &expansion))?;
+    let ncs = codegen::generate(&analyzed, options.optimization())
+        .map_err(|error| localize(error, &expansion))?;
 
     Ok(Compilation {
         ncs,
         warnings,
         included_files: expansion.included_files,
     })
+}
+
+/// Points a failed compile's diagnostics at the files they came from.
+fn localize(error: CompileError, expansion: &preprocessor::Expansion) -> CompileError {
+    match error {
+        CompileError::Diagnostics(list) => CompileError::Diagnostics(expansion.localize_all(list)),
+        other => other,
+    }
 }
 
 /// Compiles a `.nss` file from disk.

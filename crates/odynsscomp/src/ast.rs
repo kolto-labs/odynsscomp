@@ -365,6 +365,15 @@ pub enum Stmt {
     Block(Block),
     /// A local variable declaration. One per declarator.
     VarDecl(VarDecl),
+    /// Several local declarations written as one, as in `object a, b;`.
+    ///
+    /// Not a [`Stmt::Block`], though it looks like one. A block opens a scope
+    /// and pops its locals when it ends, and these declarations belong to the
+    /// scope around them: `object a, b; a = b;` has to resolve `b`.
+    VarDecls {
+        declarations: Vec<VarDecl>,
+        span: Span,
+    },
     /// An expression evaluated for its side effects.
     Expr {
         expr: Expr,
@@ -437,6 +446,7 @@ impl Stmt {
             | Stmt::For { span, .. }
             | Stmt::Switch { span, .. }
             | Stmt::Case { span, .. }
+            | Stmt::VarDecls { span, .. }
             | Stmt::Return { span, .. } => *span,
             Stmt::Block(block) => block.span,
             Stmt::VarDecl(declaration) => declaration.span,
