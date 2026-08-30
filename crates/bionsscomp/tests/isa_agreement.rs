@@ -2,7 +2,7 @@
 //!
 //! They describe it differently, on purpose. A compiler builds an instruction
 //! from two vocabularies — pick an operation, pick an operand typing — so
-//! [`odynsscomp::ncs::op`] and [`odynsscomp::ncs::qualifier`] are separate
+//! [`bionsscomp::ncs::op`] and [`bionsscomp::ncs::qualifier`] are separate
 //! lists, and the engine-structure qualifiers are parametric: structure `n` is
 //! `ENGINE + n`. A disassembler goes the other way, matching a byte pair it
 //! already has, so `kotor-ncs-isa` enumerates the pairs instead.
@@ -12,7 +12,7 @@
 //! happen is the numbers drifting apart. These tests are that guarantee: the
 //! shared crate is the authority, and a disagreement fails the build.
 
-use odynsscomp::ncs::{op, qualifier};
+use bionsscomp::ncs::{op, qualifier};
 
 /// Every opcode this compiler can emit, with the name it uses for it.
 fn compiler_opcodes() -> Vec<(&'static str, u8)> {

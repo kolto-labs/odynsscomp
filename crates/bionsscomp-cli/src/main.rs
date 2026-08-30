@@ -1,4 +1,4 @@
-//! Command line front end for [`odynsscomp`].
+//! Command line front end for [`bionsscomp`].
 //!
 //! The argument grammar of `nwnnsscomp.exe` is accepted as-is, so existing
 //! scripts and tools keep working:
@@ -13,13 +13,13 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use odynsscomp::{compile_file, CompileOptions, Game, NwScript, OptimizationLevel};
+use bionsscomp::{compile_file, CompileOptions, Game, NwScript, OptimizationLevel};
 
 const USAGE: &str = "\
-odynsscomp 1.0.0 - NWScript compiler for Knights of the Old Republic I and II
+bionsscomp 1.0.0 - NWScript compiler for Knights of the Old Republic I and II
 
 Usage:
-  odynsscomp [-cd] infile [-o outfile]
+  bionsscomp [-cd] infile [-o outfile]
 
   infile   - name of the input file.
   outfile  - name of the output file.
@@ -35,9 +35,9 @@ Usage:
   -h, --help             Show this help.
   -v, --version          Show the version.
 
-odynsscomp needs the nwscript.nss from the game you are compiling for.
+bionsscomp needs the nwscript.nss from the game you are compiling for.
 Engine functions are called by index, and the indexes differ between the two
-games. Pass --nwscript, or put nwscript.nss next to odynsscomp and it will be
+games. Pass --nwscript, or put nwscript.nss next to bionsscomp and it will be
 picked up the way the original compiler did.
 ";
 
@@ -50,7 +50,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Ok(Args::Version) => {
-            println!("odynsscomp {}", odynsscomp::VERSION);
+            println!("bionsscomp {}", bionsscomp::VERSION);
             ExitCode::SUCCESS
         }
         Ok(Args::Compile(job)) => match run(job) {

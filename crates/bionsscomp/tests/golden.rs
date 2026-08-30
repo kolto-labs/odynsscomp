@@ -9,7 +9,7 @@
 //!
 //! The pairs are game data and compiler output, neither of which is
 //! redistributable, so they live outside the tree. Point the tests at them
-//! with `ODYNSSCOMP_CORPUS`, or leave them at the default path below.
+//! with `BIONSSCOMP_CORPUS`, or leave them at the default path below.
 //!
 //! ```text
 //! corpus/
@@ -23,17 +23,17 @@
 
 use std::path::{Path, PathBuf};
 
-use odynsscomp::{compile_file, CompileOptions, Game, NwScript};
+use bionsscomp::{compile_file, CompileOptions, Game, NwScript};
 
 /// Returns the corpus root, or `None` when it is not on this machine.
 fn corpus_root() -> Option<PathBuf> {
-    let candidate = match std::env::var_os("ODYNSSCOMP_CORPUS") {
+    let candidate = match std::env::var_os("BIONSSCOMP_CORPUS") {
         Some(value) => PathBuf::from(value),
         None => {
             let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))?;
             PathBuf::from(home)
                 .join("Workspaces")
-                .join("odynsscomp_research")
+                .join("bionsscomp_research")
                 .join("corpus")
         }
     };
@@ -177,7 +177,7 @@ fn load_tables(root: &Path) -> Result<(NwScript, NwScript), String> {
 #[ignore = "needs the corpus, and shipped bytes carry source drift; see the doc comment"]
 fn compiled_output_matches_the_original_compiler() {
     let Some(root) = corpus_root() else {
-        eprintln!("skipping: no corpus. Set ODYNSSCOMP_CORPUS to a directory holding pairs.jsonl.");
+        eprintln!("skipping: no corpus. Set BIONSSCOMP_CORPUS to a directory holding pairs.jsonl.");
         return;
     };
 
@@ -186,7 +186,7 @@ fn compiled_output_matches_the_original_compiler() {
         eprintln!("skipping: {} holds no readable pairs", root.display());
         return;
     }
-    if let Some(limit) = std::env::var("ODYNSSCOMP_CORPUS_LIMIT")
+    if let Some(limit) = std::env::var("BIONSSCOMP_CORPUS_LIMIT")
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
     {

@@ -12,14 +12,14 @@
 //! checkout and CI both stay green.
 //!
 //! ```text
-//! ODYNSSCOMP_REF_DIR   a directory holding per-game subdirectories:
+//! BIONSSCOMP_REF_DIR   a directory holding per-game subdirectories:
 //!                        <dir>/k1/nwnnsscomp.exe + <dir>/k1/nwscript.nss
 //!                        <dir>/k2/nwnnsscomp.exe + <dir>/k2/nwscript.nss
-//! ODYNSSCOMP_REF_EXE   a single nwnnsscomp.exe, with the game's nwscript.nss
-//!                      beside it. Used for K1 unless ODYNSSCOMP_REF_EXE_K2 is
+//! BIONSSCOMP_REF_EXE   a single nwnnsscomp.exe, with the game's nwscript.nss
+//!                      beside it. Used for K1 unless BIONSSCOMP_REF_EXE_K2 is
 //!                      also set.
-//! ODYNSSCOMP_REF_EXE_K2  the same, for KOTOR II.
-//! ODYNSSCOMP_WINE      the wine binary. Defaults to `wine`, and is ignored on
+//! BIONSSCOMP_REF_EXE_K2  the same, for KOTOR II.
+//! BIONSSCOMP_WINE      the wine binary. Defaults to `wine`, and is ignored on
 //!                      Windows where the exe runs directly.
 //! ```
 //!
@@ -31,8 +31,8 @@
 //! # Running
 //!
 //! ```bash
-//! export ODYNSSCOMP_REF_DIR=~/Workspaces/odynsscomp_research/harness/ref
-//! export WINEPREFIX=~/Workspaces/odynsscomp_research/wineprefix
+//! export BIONSSCOMP_REF_DIR=~/Workspaces/bionsscomp_research/harness/ref
+//! export WINEPREFIX=~/Workspaces/bionsscomp_research/wineprefix
 //! cargo test --test differential -- --nocapture
 //! ```
 
@@ -40,7 +40,7 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use odynsscomp::{compile_file, CompileOptions, Game, NwScript};
+use bionsscomp::{compile_file, CompileOptions, Game, NwScript};
 
 // ---------------------------------------------------------------------------
 // locating the reference compiler
@@ -56,7 +56,7 @@ struct Reference {
 impl Reference {
     /// Finds the reference compiler for `game`, or explains why it cannot.
     fn find(game: Game) -> Result<Reference, String> {
-        let from_dir = std::env::var_os("ODYNSSCOMP_REF_DIR").map(|value| {
+        let from_dir = std::env::var_os("BIONSSCOMP_REF_DIR").map(|value| {
             PathBuf::from(value).join(match game {
                 Game::K1 => "k1",
                 Game::K2 => "k2",
@@ -64,8 +64,8 @@ impl Reference {
         });
 
         let explicit = match game {
-            Game::K1 => std::env::var_os("ODYNSSCOMP_REF_EXE"),
-            Game::K2 => std::env::var_os("ODYNSSCOMP_REF_EXE_K2"),
+            Game::K1 => std::env::var_os("BIONSSCOMP_REF_EXE"),
+            Game::K2 => std::env::var_os("BIONSSCOMP_REF_EXE_K2"),
         }
         .map(PathBuf::from);
 
@@ -74,7 +74,7 @@ impl Reference {
             (None, Some(directory)) => directory.join("nwnnsscomp.exe"),
             (None, None) => {
                 return Err(
-                    "set ODYNSSCOMP_REF_DIR or ODYNSSCOMP_REF_EXE to run differential tests"
+                    "set BIONSSCOMP_REF_DIR or BIONSSCOMP_REF_EXE to run differential tests"
                         .to_string(),
                 )
             }
@@ -153,7 +153,7 @@ fn wine_binary() -> Option<PathBuf> {
     if cfg!(windows) {
         return None;
     }
-    if let Some(value) = std::env::var_os("ODYNSSCOMP_WINE") {
+    if let Some(value) = std::env::var_os("BIONSSCOMP_WINE") {
         let path = PathBuf::from(value);
         return path.is_file().then_some(path);
     }
@@ -358,7 +358,7 @@ fn explain(expected: &[u8], actual: &[u8]) -> String {
 
     let _ = writeln!(
         report,
-        "reference: {} bytes, odynsscomp: {} bytes, first difference at 0x{at:X}",
+        "reference: {} bytes, bionsscomp: {} bytes, first difference at 0x{at:X}",
         expected.len(),
         actual.len()
     );
@@ -377,7 +377,7 @@ fn explain(expected: &[u8], actual: &[u8]) -> String {
             let marker = if low + position == index { ">" } else { " " };
             let _ = writeln!(report, "{marker} {:08X}  {}", insn.offset, insn.text);
         }
-        let _ = writeln!(report, "\nodynsscomp:");
+        let _ = writeln!(report, "\nbionsscomp:");
         let high = high.min(right.len());
         if low < high {
             for (position, insn) in right[low..high].iter().enumerate() {
@@ -391,7 +391,7 @@ fn explain(expected: &[u8], actual: &[u8]) -> String {
 
     let _ = writeln!(report, "\nhex around 0x{at:X}:");
     let _ = writeln!(report, "reference:  {}", hex_window(expected, at));
-    let _ = writeln!(report, "odynsscomp: {}", hex_window(actual, at));
+    let _ = writeln!(report, "bionsscomp: {}", hex_window(actual, at));
     report
 }
 
@@ -442,7 +442,7 @@ fn differential(name: &str, game: Game, source: &str) -> bool {
     let nwscript = match NwScript::load(reference.game, &reference.nwscript) {
         Ok(value) => value,
         Err(error) => {
-            skip(&format!("odynsscomp cannot load nwscript.nss yet: {error}"));
+            skip(&format!("bionsscomp cannot load nwscript.nss yet: {error}"));
             return false;
         }
     };
@@ -450,10 +450,10 @@ fn differential(name: &str, game: Game, source: &str) -> bool {
     let actual = match compile_file(&nss, &options) {
         Ok(bytes) => bytes,
         Err(error) if error.is_not_implemented() => {
-            skip(&format!("odynsscomp is still a scaffold: {error}"));
+            skip(&format!("bionsscomp is still a scaffold: {error}"));
             return false;
         }
-        Err(error) => panic!("odynsscomp failed to compile {name}:\n{error}"),
+        Err(error) => panic!("bionsscomp failed to compile {name}:\n{error}"),
     };
 
     assert_eq!(
@@ -724,10 +724,10 @@ fn the_two_games_number_the_same_routine_differently() {
 }
 
 /// Compiling KOTOR I source against the KOTOR II table must not silently
-/// produce KOTOR I ids. This is the regression guard for `odynsscomp`: the
+/// produce KOTOR I ids. This is the regression guard for `bionsscomp`: the
 /// routine id has to come from the supplied table every time.
 #[test]
-fn odynsscomp_takes_routine_ids_from_the_table_it_was_given() {
+fn bionsscomp_takes_routine_ids_from_the_table_it_was_given() {
     let source = "void main()\n{\n    int n = IsMoviePlaying();\n    PrintInteger(n);\n}\n";
 
     let mut ids = Vec::new();
@@ -742,7 +742,7 @@ fn odynsscomp_takes_routine_ids_from_the_table_it_was_given() {
         let nwscript = match NwScript::load(game, &reference.nwscript) {
             Ok(value) => value,
             Err(error) => {
-                skip(&format!("odynsscomp cannot load nwscript.nss yet: {error}"));
+                skip(&format!("bionsscomp cannot load nwscript.nss yet: {error}"));
                 return;
             }
         };
@@ -751,14 +751,14 @@ fn odynsscomp_takes_routine_ids_from_the_table_it_was_given() {
                 assert_eq!(
                     routine.id,
                     expected_id,
-                    "odynsscomp numbered IsMoviePlaying {} for {}, expected {expected_id}",
+                    "bionsscomp numbered IsMoviePlaying {} for {}, expected {expected_id}",
                     routine.id,
                     game.title()
                 );
                 ids.push(routine.id);
             }
             None => {
-                skip("odynsscomp does not parse nwscript.nss routines yet");
+                skip("bionsscomp does not parse nwscript.nss routines yet");
                 return;
             }
         }
@@ -775,7 +775,7 @@ fn odynsscomp_takes_routine_ids_from_the_table_it_was_given() {
             Err(error) if error.is_not_implemented() => {
                 skip("codegen is still a scaffold; the table check above still ran");
             }
-            Err(error) => panic!("odynsscomp failed: {error}"),
+            Err(error) => panic!("bionsscomp failed: {error}"),
         }
     }
 }

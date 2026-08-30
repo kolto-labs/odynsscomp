@@ -1,4 +1,4 @@
-# odynsscomp
+# bionsscomp
 
 Compiles NWScript source (`.nss`) into compiled scripts (`.ncs`) for
 Star Wars: Knights of the Old Republic I and II.
@@ -38,7 +38,7 @@ compiles both ways.
 ## Use it as a library
 
 ```rust
-use odynsscomp::{compile, CompileOptions, Game, NwScript};
+use bionsscomp::{compile, CompileOptions, Game, NwScript};
 
 let nwscript = NwScript::load(Game::K1, "/path/to/kotor/nwscript.nss")?;
 let options = CompileOptions::new(&nwscript)
@@ -56,13 +56,13 @@ The argument grammar of `nwnnsscomp.exe` is accepted as-is, so existing scripts
 and tools keep working:
 
 ```sh
-odynsscomp -c k_test.nss -o k_test.ncs
+bionsscomp -c k_test.nss -o k_test.ncs
 ```
 
 Longer options cover what the original guessed at:
 
 ```sh
-odynsscomp --game 2 --nwscript /path/to/tsl/nwscript.nss \
+bionsscomp --game 2 --nwscript /path/to/tsl/nwscript.nss \
            --include ./scripts k_test.nss -o k_test.ncs
 ```
 
@@ -92,14 +92,14 @@ So the routine table is data you supply per game. It is also game data, which
 is why this repository ships none of it. Take `nwscript.nss` from your own
 installation, or from a modding tool that extracted it.
 
-## Depend on it from OdyPatcher
+## Depend on it from BioPatcher
 
 The repository is private, so `crates.io` is not involved. Use a git dependency
 pinned to a tag:
 
 ```toml
 [dependencies]
-odynsscomp = { git = "https://github.com/bodencrouch/odynsscomp.git", tag = "v1.0.0" }
+bionsscomp = { git = "https://github.com/bodencrouch/bionsscomp.git", tag = "v1.0.0" }
 ```
 
 Cargo has to authenticate to reach a private repository. Over HTTPS that means
@@ -114,7 +114,7 @@ Over SSH instead, if the account has a key loaded:
 
 ```toml
 [dependencies]
-odynsscomp = { git = "ssh://git@github.com/bodencrouch/odynsscomp.git", tag = "v1.0.0" }
+bionsscomp = { git = "ssh://git@github.com/bodencrouch/bionsscomp.git", tag = "v1.0.0" }
 ```
 
 If Cargo's built-in SSH client cannot authenticate but `git clone` can, hand the
@@ -131,15 +131,15 @@ the network:
 
 ```toml
 [dependencies]
-odynsscomp = { path = "../odynsscomp/crates/odynsscomp" }
+bionsscomp = { path = "../bionsscomp/crates/bionsscomp" }
 ```
 
 A `[patch]` entry keeps the git dependency in `Cargo.toml` while building
 against a local checkout:
 
 ```toml
-[patch."ssh://git@github.com/bodencrouch/odynsscomp.git"]
-odynsscomp = { path = "../odynsscomp/crates/odynsscomp" }
+[patch."ssh://git@github.com/bodencrouch/bionsscomp.git"]
+bionsscomp = { path = "../bionsscomp/crates/bionsscomp" }
 ```
 
 The library pulls in no third-party crates, so depending on it adds one entry
@@ -154,7 +154,7 @@ cargo fmt --all --check
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-Minimum supported Rust version is **1.77**, matching OdyPatcher. That is the
+Minimum supported Rust version is **1.77**, matching BioPatcher. That is the
 last toolchain that targeted Windows 7 directly, and the crate stays on it by
 taking no dependencies. CI builds on 1.77.2 on every push, so a change that
 raises the floor fails there.
@@ -169,7 +169,7 @@ The pairs are game data and are not in this repository. Point the tests at a
 corpus:
 
 ```sh
-ODYNSSCOMP_CORPUS=/path/to/corpus cargo test --all
+BIONSSCOMP_CORPUS=/path/to/corpus cargo test --all
 ```
 
 The corpus layout:
@@ -194,7 +194,7 @@ skipped and passes, so a fresh checkout is green.
 ## Layout
 
 ```text
-crates/odynsscomp/       the library
+crates/bionsscomp/       the library
   src/error.rs           diagnostics, spans, line and column
   src/preprocessor.rs    #include and #define
   src/lexer.rs           text to tokens
@@ -209,7 +209,7 @@ crates/odynsscomp/       the library
   tests/frontend_corpus.rs  parses every script the corpus lists
   tests/golden.rs        byte comparison against the corpus
   tests/fixtures/spec_gaps/  one file per open question, for the Wine oracle
-crates/odynsscomp-cli/   the binary
+crates/bionsscomp-cli/   the binary
 ```
 
 ## Credit
@@ -218,7 +218,7 @@ The compiler this one replaces is Torlack's NWScript compiler, written by
 Edward T. Smith and later contributed to the Open Knights Consortium under the
 BSD 3-Clause license, then ported to KOTOR by Hazard and by tk102 for stoffe.
 
-odynsscomp is an independent Rust reimplementation. It copies no code. It does
+bionsscomp is an independent Rust reimplementation. It copies no code. It does
 copy behaviour on purpose, down to the diagnostic strings, because mod source
 and mod tooling were written against that behaviour. See [NOTICE](NOTICE) for
 the full attribution.

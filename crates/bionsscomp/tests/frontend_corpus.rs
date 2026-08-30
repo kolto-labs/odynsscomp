@@ -11,25 +11,25 @@
 //! # The corpus is not in this repository
 //!
 //! Game scripts and mod scripts are not redistributable, so they live outside
-//! the tree. Point at them with `ODYNSSCOMP_CORPUS`, or leave them at the
+//! the tree. Point at them with `BIONSSCOMP_CORPUS`, or leave them at the
 //! default path below. When they are absent this test prints what it skipped
 //! and passes, which keeps CI green on a clean checkout.
 
 use std::path::{Path, PathBuf};
 
-use odynsscomp::error::Severity;
-use odynsscomp::preprocessor::{self, IncludeResolver};
-use odynsscomp::{lexer, parser};
+use bionsscomp::error::Severity;
+use bionsscomp::preprocessor::{self, IncludeResolver};
+use bionsscomp::{lexer, parser};
 
 /// Returns the corpus root, or `None` when it is not on this machine.
 fn corpus_root() -> Option<PathBuf> {
-    let candidate = match std::env::var_os("ODYNSSCOMP_CORPUS") {
+    let candidate = match std::env::var_os("BIONSSCOMP_CORPUS") {
         Some(value) => PathBuf::from(value),
         None => {
             let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))?;
             PathBuf::from(home)
                 .join("Workspaces")
-                .join("odynsscomp_research")
+                .join("bionsscomp_research")
                 .join("corpus")
         }
     };
@@ -239,7 +239,7 @@ fn the_shouting_type_synonyms_are_load_bearing_in_the_shipped_k2_header() {
 #[test]
 fn every_corpus_script_gets_through_the_front_end() {
     let Some(root) = corpus_root() else {
-        eprintln!("skipping: no corpus. Set ODYNSSCOMP_CORPUS to a directory holding pairs.jsonl.");
+        eprintln!("skipping: no corpus. Set BIONSSCOMP_CORPUS to a directory holding pairs.jsonl.");
         return;
     };
 
@@ -251,8 +251,8 @@ fn every_corpus_script_gets_through_the_front_end() {
 
     // The corpus lives on whatever disk the developer put it on, and reading a
     // few thousand scripts plus their includes is minutes of IO on a slow one.
-    // `ODYNSSCOMP_CORPUS_LIMIT` trims the run while iterating.
-    if let Some(limit) = std::env::var("ODYNSSCOMP_CORPUS_LIMIT")
+    // `BIONSSCOMP_CORPUS_LIMIT` trims the run while iterating.
+    if let Some(limit) = std::env::var("BIONSSCOMP_CORPUS_LIMIT")
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
     {

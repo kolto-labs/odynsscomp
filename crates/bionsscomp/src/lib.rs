@@ -18,7 +18,7 @@
 //! # Compiling from memory
 //!
 //! ```no_run
-//! use odynsscomp::{compile, CompileOptions, Game, NwScript};
+//! use bionsscomp::{compile, CompileOptions, Game, NwScript};
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let nwscript = NwScript::load(Game::K1, "/path/to/kotor/nwscript.nss")?;

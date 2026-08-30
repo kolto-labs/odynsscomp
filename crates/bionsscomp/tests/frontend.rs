@@ -7,10 +7,10 @@
 
 use std::path::PathBuf;
 
-use odynsscomp::ast::{Declaration, EngineType, Expr, Stmt, Type};
-use odynsscomp::error::Severity;
-use odynsscomp::preprocessor::{self, IncludeResolver};
-use odynsscomp::{lexer, parser};
+use bionsscomp::ast::{Declaration, EngineType, Expr, Stmt, Type};
+use bionsscomp::error::Severity;
+use bionsscomp::preprocessor::{self, IncludeResolver};
+use bionsscomp::{lexer, parser};
 
 fn fixture(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

@@ -10,7 +10,7 @@ The reference compiler always exits 0 and writes every diagnostic to stdout, so
 
 ## Settled by the upstream sources — confirm the KOTOR fork agrees
 
-Torlack's NWNTools sources are at `~/Workspaces/odynsscomp_research/nwntools_upstream/`.
+Torlack's NWNTools sources are at `~/Workspaces/bionsscomp_research/nwntools_upstream/`.
 `_NscLib/NscParser.ypp` is the real yacc grammar and `_NscLib/NscContext.cpp`
 holds the real lexer and preprocessor, so these are no longer open questions
 about *the language*. They stay here because the KOTOR build is a fork by

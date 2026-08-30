@@ -14,7 +14,7 @@ of them have to pass.
 ## Rules that are not negotiable
 
 **No game data in the repository.** No `nwscript.nss`, no `.ncs` from either
-game, no `nwnnsscomp.exe`. Tests reach for those through `ODYNSSCOMP_CORPUS`.
+game, no `nwnnsscomp.exe`. Tests reach for those through `BIONSSCOMP_CORPUS`.
 `.gitignore` blocks the obvious names; do not work around it.
 
 **No new dependencies without a reason in the pull request.** The library is
@@ -30,7 +30,7 @@ byte is a failure.
 
 ## Working on a stage
 
-Each module in `crates/odynsscomp/src/` opens with what it owes the next one,
+Each module in `crates/bionsscomp/src/` opens with what it owes the next one,
 and `codegen.rs` lists the three behaviors that look like bugs and are load
 bearing. Read those before changing anything there.
 
@@ -54,7 +54,7 @@ even a perfect compiler misses those.
 
 ```sh
 cargo test --test golden -- --ignored --nocapture
-ODYNSSCOMP_CORPUS_LIMIT=200 cargo test --test golden -- --ignored
+BIONSSCOMP_CORPUS_LIMIT=200 cargo test --test golden -- --ignored
 ```
 
 `tests/differential.rs` is the bar without that slack: it asks the original
@@ -69,12 +69,12 @@ Wine and with this crate, then requires the bytes to be equal. It is the only
 test that can settle a question the specs leave open.
 
 ```sh
-export ODYNSSCOMP_REF_DIR=~/Workspaces/odynsscomp_research/harness/ref
-export WINEPREFIX=~/Workspaces/odynsscomp_research/wineprefix
+export BIONSSCOMP_REF_DIR=~/Workspaces/bionsscomp_research/harness/ref
+export WINEPREFIX=~/Workspaces/bionsscomp_research/wineprefix
 cargo test --test differential -- --nocapture
 ```
 
-`ODYNSSCOMP_REF_DIR` holds one subdirectory per game, each with a copy of
+`BIONSSCOMP_REF_DIR` holds one subdirectory per game, each with a copy of
 `nwnnsscomp.exe` and that game's `nwscript.nss`. The original picks its game
 from the `nwscript.nss` beside the executable and nothing else, so those two
 directories are the whole mechanism. Without the variable, or without Wine,
@@ -91,7 +91,7 @@ Add a case with the `differential_test!` macro. On a mismatch the failure names
 the first differing instruction with context on both sides, plus a hex window.
 
 The wider harness lives outside this repository at
-`~/Workspaces/odynsscomp_research/harness/`. It answers one-off questions
+`~/Workspaces/bionsscomp_research/harness/`. It answers one-off questions
 (`diffrun.py`), records what the original does (`probe_gaps.py`, which writes
 `spec_gaps_resolved.md`), and scores the whole corpus (`corpus_score.py`, which
 writes `corpus_scoreboard.md`). That scoreboard is how correctness gets

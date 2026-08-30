@@ -1,5 +1,5 @@
 [package]
-name = "odynsscomp"
+name = "bionsscomp"
 description = "NWScript (.nss) to compiled script (.ncs) compiler for Star Wars: Knights of the Old Republic I and II"
 readme = "../../README.md"
 version.workspace = true
@@ -13,7 +13,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [lib]
-name = "odynsscomp"
+name = "bionsscomp"
 path = "src/lib.rs"
 
 # No dependencies on purpose. The crate stays std-only so it keeps building on

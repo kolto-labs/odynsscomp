@@ -1,6 +1,6 @@
 [package]
-name = "odynsscomp-cli"
-description = "Command line front end for odynsscomp, argv-compatible with nwnnsscomp.exe"
+name = "bionsscomp-cli"
+description = "Command line front end for bionsscomp, argv-compatible with nwnnsscomp.exe"
 readme = "../../README.md"
 version.workspace = true
 edition.workspace = true
@@ -13,8 +13,8 @@ keywords.workspace = true
 categories.workspace = true
 
 [[bin]]
-name = "odynsscomp"
+name = "bionsscomp"
 path = "src/main.rs"
 
 [dependencies]
-odynsscomp = { version = "1.0.0", path = "../odynsscomp" }
+bionsscomp = { version = "1.0.0", path = "../bionsscomp" }

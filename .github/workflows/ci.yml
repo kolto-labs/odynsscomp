@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@v7
 
       # The crate has no third-party dependencies, so it stays buildable on the
-      # last toolchain that targeted Windows 7. OdyPatcher needs that floor.
+      # last toolchain that targeted Windows 7. BioPatcher needs that floor.
       - uses: dtolnay/rust-toolchain@1.77.2
 
       - uses: Swatinem/rust-cache@v2
@@ -72,26 +72,26 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          path: odynsscomp
+          path: bionsscomp
 
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: odynsscomp
+          workspaces: bionsscomp
 
       # Builds a crate outside the workspace that depends on the library the
-      # way OdyPatcher will, and calls the public API. Catches a private type
+      # way BioPatcher will, and calls the public API. Catches a private type
       # leaking into a signature, or a rename that breaks consumers.
       - name: Build a consumer crate against the library
         run: |
           cargo new --bin consumer
           cd consumer
           cat >> Cargo.toml <<'EOF'
-          odynsscomp = { path = "../odynsscomp/crates/odynsscomp" }
+          bionsscomp = { path = "../bionsscomp/crates/bionsscomp" }
           EOF
           cat > src/main.rs <<'EOF'
-          use odynsscomp::{compile, CompileOptions, Game, NwScript, OptimizationLevel};
+          use bionsscomp::{compile, CompileOptions, Game, NwScript, OptimizationLevel};
 
           fn main() {
               let nwscript = NwScript::empty(Game::K2);

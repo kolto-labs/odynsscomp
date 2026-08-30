@@ -6,8 +6,8 @@
 
 use std::path::PathBuf;
 
-use odynsscomp::ncs::{NcsHeader, NcsWriter, HEADER_LEN};
-use odynsscomp::{compile, compile_file, CompileOptions, Game, NwScript};
+use bionsscomp::ncs::{NcsHeader, NcsWriter, HEADER_LEN};
+use bionsscomp::{compile, compile_file, CompileOptions, Game, NwScript};
 
 fn fixture(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -99,7 +99,7 @@ fn a_non_ascii_string_literal_keeps_its_source_bytes() {
     let options = CompileOptions::new(&nwscript);
 
     let source =
-        odynsscomp::preprocessor::decode_source(b"void main() { string s = \"caf\xe9\"; }");
+        bionsscomp::preprocessor::decode_source(b"void main() { string s = \"caf\xe9\"; }");
     let bytes = compile(&source, &options).expect("it compiles");
 
     let expected = [0x04, 0x05, 0x00, 0x04, b'c', b'a', b'f', 0xe9];
