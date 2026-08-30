@@ -3,8 +3,16 @@
 version = 3
 
 [[package]]
+name = "kotor-ncs-isa"
+version = "0.1.0"
+source = "git+https://github.com/arrenkaetris/kotor-formats?tag=v0.1.0#2d701642877f7c4f02e8d95943588d622d29fc34"
+
+[[package]]
 name = "odynsscomp"
 version = "1.0.0"
+dependencies = [
+ "kotor-ncs-isa",
+]
 
 [[package]]
 name = "odynsscomp-cli"

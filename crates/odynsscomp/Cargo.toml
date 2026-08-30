@@ -17,7 +17,12 @@ name = "odynsscomp"
 path = "src/lib.rs"
 
 # No dependencies on purpose. The crate stays std-only so it keeps building on
-# the oldest toolchain OdyPatcher supports, and so consumers inherit nothing.
+# the oldest toolchain BioPatcher supports, and so consumers inherit nothing.
 [dependencies]
 
+# Test-only. kotor-ncs-isa holds the same instruction set, enumerated as
+# (opcode, qualifier) pairs; tests/isa_agreement.rs checks this crate's
+# vocabularies against it so the two cannot drift apart. A dev-dependency
+# does not reach consumers, so they still inherit nothing.
 [dev-dependencies]
+kotor-ncs-isa = { git = "https://github.com/arrenkaetris/kotor-formats", tag = "v0.1.0" }
