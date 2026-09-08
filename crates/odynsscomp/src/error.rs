@@ -2,8 +2,8 @@
 //!
 //! Every stage of the pipeline reports problems through [`Diagnostic`]. A
 //! diagnostic always carries a [`Span`] so callers can point at the offending
-//! text, and `nwnnsscomp.exe`-style one-line messages come out of the
-//! [`std::fmt::Display`] implementations.
+//! text, and `nwnnsscomp.exe`-style one-line messages come out of the [`Display`]
+//! implementations.
 //!
 //! This module is fully implemented. The compiler stages are not; see the
 //! module docs in [`crate::lexer`] and friends.
@@ -218,11 +218,6 @@ impl Diagnostic {
         self.file = file.into();
         self
     }
-
-    /// Returns true when this diagnostic stops the compile.
-    pub fn is_error(&self) -> bool {
-        self.severity == Severity::Error
-    }
 }
 
 impl fmt::Display for Diagnostic {
@@ -260,11 +255,10 @@ pub enum CompileError {
         /// The operating system's explanation.
         message: String,
     },
-    /// The requested feature exists in the design but not in the code.
+    /// The requested feature exists in the design but not yet in the code.
     ///
-    /// No stage of the compiler returns this any more. It stays because it is
-    /// part of the 1.0 API, and because a caller asking for something like
-    /// decompiling deserves this rather than a diagnostic about their source.
+    /// The scaffold returns this from every entry point. It disappears as the
+    /// stages land.
     NotImplemented(&'static str),
 }
 
@@ -342,11 +336,6 @@ impl DiagnosticSink {
     /// Returns every diagnostic recorded so far.
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
-    }
-
-    /// Returns every diagnostic recorded so far, consuming the sink.
-    pub fn into_diagnostics(self) -> Vec<Diagnostic> {
-        self.diagnostics
     }
 
     /// Returns how many errors were recorded.

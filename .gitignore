@@ -13,3 +13,6 @@ nwnnsscomp.exe
 *.rim
 *.mod
 /corpus/
+agentdecompile_projects/
+.cursor/
+docs/

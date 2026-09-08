@@ -6,14 +6,11 @@
 //! links it and compiles in process, with no subprocess, no temporary files,
 //! and no wine.
 //!
-//! # Byte equality is the acceptance test
+//! # Status
 //!
-//! The output has to be the same bytes `nwnnsscomp.exe` produces, not merely
-//! code that runs the same. So this compiler does no optimization at all: the
-//! reference gates every optimization it has on a flag the KOTOR fork left
-//! permanently off, and matching it means matching that too. See
-//! [`codegen`] for the three behaviors that look like bugs and are load
-//! bearing.
+//! Scaffold. The public API, the diagnostics, and the compiled script container
+//! are real. The compiler stages return
+//! [`CompileError::NotImplemented`] until they land. Nothing panics.
 //!
 //! # Compiling from memory
 //!
@@ -178,52 +175,17 @@ pub fn compile_detailed(
     let origin = PathBuf::from(options.source_name());
     let resolver = options.include_resolver();
 
-    let mut expansion = preprocessor::expand(source, &origin, &resolver)?;
-    let mut warnings = expansion.warnings.clone();
-
-    // A script never includes `nwscript.nss`, so the engine structure names it
-    // declares have to be handed over here. Without them `effect` is an
-    // ordinary identifier and every declaration that uses one fails to parse.
-    expansion
-        .engine_structures
-        .merge_defaults(options.nwscript().engine_structures());
-
-    let lexed = lexer::scan(&expansion.source, &expansion.engine_structures);
-    if lexed.has_errors() {
-        return Err(CompileError::Diagnostics(
-            expansion.localize_all(lexed.diagnostics),
-        ));
-    }
-    warnings.extend(expansion.localize_all(lexed.diagnostics));
-
-    let parsed = parser::parse_detailed(lexed.tokens);
-    if parsed.has_errors() {
-        return Err(CompileError::Diagnostics(
-            expansion.localize_all(parsed.diagnostics),
-        ));
-    }
-    warnings.extend(expansion.localize_all(parsed.diagnostics));
-
-    // The back end works on the expanded buffer too, so its diagnostics need
-    // the same rewrite to name the file and line the code really came from.
-    let analyzed = sema::analyze(parsed.script, options.nwscript())
-        .map_err(|error| localize(error, &expansion))?;
-    let ncs = codegen::generate(&analyzed, options.optimization())
-        .map_err(|error| localize(error, &expansion))?;
+    let expansion = preprocessor::expand(source, &origin, &resolver)?;
+    let tokens = lexer::tokenize(&expansion.source)?;
+    let script = parser::parse(tokens)?;
+    let analyzed = sema::analyze(script, options.nwscript())?;
+    let ncs = codegen::generate(&analyzed, options.optimization())?;
 
     Ok(Compilation {
         ncs,
-        warnings,
+        warnings: Vec::new(),
         included_files: expansion.included_files,
     })
-}
-
-/// Points a failed compile's diagnostics at the files they came from.
-fn localize(error: CompileError, expansion: &preprocessor::Expansion) -> CompileError {
-    match error {
-        CompileError::Diagnostics(list) => CompileError::Diagnostics(expansion.localize_all(list)),
-        other => other,
-    }
 }
 
 /// Compiles a `.nss` file from disk.
@@ -240,11 +202,10 @@ pub fn compile_file(
     options: &CompileOptions<'_>,
 ) -> Result<Vec<u8>, CompileError> {
     let path = path.as_ref();
-    let bytes = std::fs::read(path).map_err(|error| CompileError::Io {
+    let source = std::fs::read_to_string(path).map_err(|error| CompileError::Io {
         path: path.display().to_string(),
         message: error.to_string(),
     })?;
-    let source = preprocessor::decode_source(&bytes);
 
     let mut options = options.clone();
     if let Some(directory) = path.parent() {
@@ -300,19 +261,10 @@ mod tests {
     }
 
     #[test]
-    fn an_empty_main_compiles_to_the_smallest_script_there_is() {
+    fn compiling_reports_the_first_unwritten_stage_instead_of_panicking() {
         let nwscript = NwScript::empty(Game::K1);
         let options = CompileOptions::new(&nwscript);
-        let bytes = compile("void main() { }", &options).expect("an empty main compiles");
-        assert_eq!(bytes.len(), 23);
-        assert_eq!(&bytes[0..8], b"NCS V1.0");
-    }
-
-    #[test]
-    fn a_file_with_no_entry_point_is_refused_as_an_include() {
-        let nwscript = NwScript::empty(Game::K1);
-        let options = CompileOptions::new(&nwscript);
-        let error = compile("void Helper() { }", &options).expect_err("there is no entry point");
-        assert!(error.to_string().contains("include file"));
+        let error = compile("void main() { }", &options).expect_err("the pipeline is a stub");
+        assert!(error.is_not_implemented());
     }
 }

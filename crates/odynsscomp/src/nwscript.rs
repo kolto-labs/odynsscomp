@@ -12,21 +12,16 @@
 //! also keeps copyrighted game files out of the repository: the caller points
 //! at the `nwscript.nss` from their own installation.
 //!
-//! # What loading a table does
+//! # Status
 //!
-//! `nwscript.nss` is compiled with two permissions no other file has: it may
-//! name the `action` type, and a body-less function in it is an engine routine
-//! rather than a forward declaration. Its file scope variables are not
-//! variables either — every one of them is a constant, and a script that names
-//! `TRUE` gets that constant's initializer emitted inline instead of a read of
-//! a global. That is why [`Constant`] keeps the initializer expression.
+//! Scaffold. File loading and error reporting are real; parsing the prototypes
+//! out of the source is not.
 
 use std::fmt;
 use std::path::Path;
 
-use crate::ast::{simplify_constant, Declaration, Expr, Type};
-use crate::error::{CompileError, Diagnostic, Span, Stage};
-use crate::preprocessor::EngineStructures;
+use crate::ast::Type;
+use crate::error::{CompileError, Span};
 
 /// Which game a script is being compiled for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -100,7 +95,7 @@ impl Routine {
     pub fn required_argument_count(&self) -> usize {
         self.parameters
             .iter()
-            .filter(|parameter| parameter.default.is_none())
+            .filter(|parameter| !parameter.has_default)
             .count()
     }
 }
@@ -112,30 +107,17 @@ pub struct RoutineParameter {
     pub ty: Type,
     /// The parameter name.
     pub name: String,
-    /// The default value, if the prototype gives one.
-    ///
-    /// A call that leaves the argument out gets this expression emitted at the
-    /// call site, exactly as if it had been written there. So the expression
-    /// has to survive, not just the fact that there was one.
-    pub default: Option<Expr>,
+    /// Whether the prototype gives it a default value.
+    pub has_default: bool,
 }
 
-impl RoutineParameter {
-    /// Returns whether the prototype gives the parameter a default value.
-    pub fn has_default(&self) -> bool {
-        self.default.is_some()
-    }
-}
-
-/// A file scope variable of `nwscript.nss`, which is a constant.
+/// A `const` declared at file scope in `nwscript.nss`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Constant {
-    /// The constant name, such as `TRUE`.
+    /// The constant name, such as `OBJECT_SELF`.
     pub name: String,
     /// Its type.
     pub ty: Type,
-    /// The initializer, which is what a use of the name emits.
-    pub value: Expr,
 }
 
 /// A loaded, game-specific routine table.
@@ -145,7 +127,6 @@ pub struct NwScript {
     source: String,
     routines: Vec<Routine>,
     constants: Vec<Constant>,
-    engine_structures: EngineStructures,
 }
 
 impl NwScript {
@@ -157,12 +138,11 @@ impl NwScript {
     /// diagnostics when its contents are rejected.
     pub fn load(game: Game, path: impl AsRef<Path>) -> Result<NwScript, CompileError> {
         let path = path.as_ref();
-        let bytes = std::fs::read(path).map_err(|error| CompileError::Io {
+        let source = std::fs::read_to_string(path).map_err(|error| CompileError::Io {
             path: path.display().to_string(),
             message: error.to_string(),
         })?;
-        // Game files are Windows-1252 bytes, not UTF-8.
-        NwScript::from_source(game, crate::preprocessor::decode_source(&bytes))
+        NwScript::from_source(game, source)
     }
 
     /// Parses `nwscript.nss` contents already held in memory.
@@ -171,76 +151,13 @@ impl NwScript {
     ///
     /// Returns parse diagnostics when the source is rejected.
     pub fn from_source(game: Game, source: impl Into<String>) -> Result<NwScript, CompileError> {
-        let source = source.into();
-        let origin = Path::new("nwscript.nss");
-        let resolver = crate::preprocessor::IncludeResolver::new();
-        let expansion = crate::preprocessor::expand(&source, origin, &resolver)?;
-
-        let lexed = crate::lexer::scan(&expansion.source, &expansion.engine_structures);
-        if lexed.has_errors() {
-            return Err(CompileError::Diagnostics(
-                expansion.localize_all(lexed.diagnostics),
-            ));
-        }
-        let script = crate::parser::parse(lexed.tokens)
-            .map_err(|error| relabel(error, &expansion, origin))?;
-
-        let mut routines = Vec::new();
-        let mut constants = Vec::new();
-        for declaration in &script.declarations {
-            match declaration {
-                // A body-less function in this file is an engine routine, and
-                // its position among them is the id the byte stream calls it
-                // by. Nothing else assigns those numbers.
-                Declaration::Function(function) if function.body.is_none() => {
-                    let id = u16::try_from(routines.len()).map_err(|_| {
-                        CompileError::from_diagnostic(Diagnostic::error(
-                            Stage::NwScript,
-                            function.span,
-                            "nwscript.nss declares more than 65536 engine routines",
-                        ))
-                    })?;
-                    routines.push(Routine {
-                        id,
-                        name: function.name.clone(),
-                        return_type: function.return_type.clone(),
-                        parameters: function
-                            .parameters
-                            .iter()
-                            .map(|parameter| RoutineParameter {
-                                ty: parameter.ty.clone(),
-                                name: parameter.name.clone(),
-                                default: parameter.default.as_ref().map(simplify_constant),
-                            })
-                            .collect(),
-                        span: function.span,
-                    });
-                }
-                Declaration::Global(variable) => {
-                    let Some(value) = variable.init.clone() else {
-                        return Err(CompileError::from_diagnostic(Diagnostic::error(
-                            Stage::NwScript,
-                            variable.span,
-                            format!("Required value for constant \"{}\" missing.", variable.name),
-                        )));
-                    };
-                    constants.push(Constant {
-                        name: variable.name.clone(),
-                        ty: variable.ty.clone(),
-                        value: simplify_constant(&value),
-                    });
-                }
-                _ => {}
-            }
-        }
-
-        Ok(NwScript {
-            game,
-            source,
-            routines,
-            constants,
-            engine_structures: expansion.engine_structures,
-        })
+        let mut table = NwScript::empty(game);
+        table.source = source.into();
+        // TODO(nwscript): parse prototypes in file order, assigning each one
+        // the next routine id, and collect file scope constants. Reuse the
+        // lexer and parser rather than writing a second grammar. Fill
+        // `table.routines` and `table.constants`, then return `Ok(table)`.
+        Err(CompileError::NotImplemented("loading nwscript.nss"))
     }
 
     /// Builds a table with no routines and no constants.
@@ -253,7 +170,6 @@ impl NwScript {
             source: String::new(),
             routines: Vec::new(),
             constants: Vec::new(),
-            engine_structures: EngineStructures::new(),
         }
     }
 
@@ -285,41 +201,6 @@ impl NwScript {
     /// Looks a routine up by the id the byte stream uses.
     pub fn routine_by_id(&self, id: u16) -> Option<&Routine> {
         self.routines.iter().find(|routine| routine.id == id)
-    }
-
-    /// Looks a constant up by name. Names are case sensitive.
-    pub fn constant(&self, name: &str) -> Option<&Constant> {
-        self.constants.iter().find(|constant| constant.name == name)
-    }
-
-    /// Returns the engine structure types this table's `#define` lines declared.
-    ///
-    /// A script never declares its own; it inherits these, which is why the
-    /// name `effect` resolves in a file that never mentions `nwscript.nss`.
-    pub fn engine_structures(&self) -> &EngineStructures {
-        &self.engine_structures
-    }
-}
-
-/// Rewrites a compile error to blame `nwscript.nss` rather than the buffer.
-fn relabel(
-    error: CompileError,
-    expansion: &crate::preprocessor::Expansion,
-    origin: &Path,
-) -> CompileError {
-    match error {
-        CompileError::Diagnostics(list) => {
-            let mut list = expansion.localize_all(list);
-            let label = origin.display().to_string();
-            for diagnostic in &mut list {
-                diagnostic.stage = Stage::NwScript;
-                if diagnostic.file.is_empty() {
-                    diagnostic.file = label.clone();
-                }
-            }
-            CompileError::Diagnostics(list)
-        }
-        other => other,
     }
 }
 
@@ -353,37 +234,10 @@ mod tests {
     }
 
     #[test]
-    fn a_prototype_becomes_a_routine_numbered_by_its_position() {
-        let table = NwScript::from_source(
-            Game::K1,
-            "void Random(int n);\nvoid PrintString(string s);\n",
-        )
-        .expect("the table loads");
-        assert_eq!(table.routine("Random").expect("Random is there").id, 0);
-        assert_eq!(
-            table
-                .routine("PrintString")
-                .expect("PrintString is there")
-                .id,
-            1
-        );
-    }
-
-    #[test]
-    fn a_file_scope_variable_becomes_a_constant_that_keeps_its_value() {
-        let table =
-            NwScript::from_source(Game::K1, "int TRUE = 1;\nfloat PI = 3.14;\n").expect("loads");
-        let constant = table.constant("TRUE").expect("TRUE is there");
-        assert_eq!(constant.ty, Type::Int);
-        assert!(matches!(constant.value, Expr::IntLit { value: 1, .. }));
-        assert!(table.routines().is_empty());
-    }
-
-    #[test]
-    fn engine_structure_defines_come_along_with_the_table() {
-        let table = NwScript::from_source(Game::K1, "#define ENGINE_STRUCTURE_0 effect\n")
-            .expect("the table loads");
-        assert_eq!(table.engine_structures().lookup("effect"), Some(0));
+    fn loading_reports_that_parsing_is_unwritten_instead_of_panicking() {
+        let error = NwScript::from_source(Game::K1, "void ActionAttack(object oTarget);")
+            .expect_err("the loader is a stub");
+        assert!(error.is_not_implemented());
     }
 
     #[test]
@@ -396,15 +250,12 @@ mod tests {
                 RoutineParameter {
                     ty: Type::Int,
                     name: "nMaxInteger".to_string(),
-                    default: None,
+                    has_default: false,
                 },
                 RoutineParameter {
                     ty: Type::Int,
                     name: "nSeed".to_string(),
-                    default: Some(Expr::IntLit {
-                        value: 0,
-                        span: Span::default(),
-                    }),
+                    has_default: true,
                 },
             ],
             span: Span::default(),

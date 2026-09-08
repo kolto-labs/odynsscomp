@@ -10,30 +10,18 @@ links it and compiles in process: no subprocess, no temporary files, no wine.
 
 ## Status
 
-It compiles. Every one of the 2340 shipped script pairs that `nwnnsscomp.exe`
-itself builds, this compiler builds to identical bytes, across both games and
-all four difficulty tiers. The 30 it declines to build, this one declines too.
-
-Byte equality is the acceptance test, not merely running the same. That is why
-this compiler does no optimization at all: the original gates every
-optimization it has behind a flag the KOTOR fork left permanently off, so
-matching its output means matching that too. `2 + 3` really does emit two
-pushes and an add.
+Scaffold. Version 1.0.0 fixes the public API, the diagnostics, and the compiled
+script container. The compiler stages return `CompileError::NotImplemented`
+until they land. Nothing panics and nothing writes to disk unless you ask it to.
 
 | Part | State |
 | --- | --- |
-| Preprocessor, lexer, parser | done |
-| Name resolution, layout, reachability | done |
-| Code generation and `.ncs` emission | done |
-| `nwscript.nss` routine table parsing | done |
-| Command line, argv-compatible with the original | done |
-| Decompiling | not supported, and not planned |
-
-Two things the original rejects and this compiler accepts: a definition whose
-parameter list disagrees with an earlier prototype, and an argument whose type
-does not match the parameter for a handful of engine routines. Seven corpus
-scripts are in that gap. Nothing in it changes the bytes of a script that
-compiles both ways.
+| Public API, `CompileOptions`, `Game` | done |
+| Diagnostics with line and column | done |
+| `.ncs` header and byte writer | done |
+| Command line argument handling | done |
+| Preprocessor, lexer, parser, sema, codegen | stubs |
+| `nwscript.nss` routine table parsing | stub |
 
 ## Use it as a library
 
@@ -205,23 +193,9 @@ crates/odynsscomp/       the library
   src/ncs.rs             the compiled script container
   src/nwscript.rs        per-game routine tables
   tests/pipeline.rs      end to end checks on committed fixtures
-  tests/frontend.rs      preprocessor, lexer and parser on the fixtures
-  tests/frontend_corpus.rs  parses every script the corpus lists
   tests/golden.rs        byte comparison against the corpus
-  tests/fixtures/spec_gaps/  one file per open question, for the Wine oracle
 crates/odynsscomp-cli/   the binary
 ```
-
-## Credit
-
-The compiler this one replaces is Torlack's NWScript compiler, written by
-Edward T. Smith and later contributed to the Open Knights Consortium under the
-BSD 3-Clause license, then ported to KOTOR by Hazard and by tk102 for stoffe.
-
-odynsscomp is an independent Rust reimplementation. It copies no code. It does
-copy behaviour on purpose, down to the diagnostic strings, because mod source
-and mod tooling were written against that behaviour. See [NOTICE](NOTICE) for
-the full attribution.
 
 ## License
 
